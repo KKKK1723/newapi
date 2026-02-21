@@ -204,6 +204,14 @@ func SetApiRouter(router *gin.Engine) {
 			redemptionRoute.DELETE("/invalid", controller.DeleteInvalidRedemption)
 			redemptionRoute.DELETE("/:id", controller.DeleteRedemption)
 		}
+		invitationRoute := apiRouter.Group("/invitation")
+		invitationRoute.Use(middleware.AdminAuth())
+		{
+			invitationRoute.GET("/", controller.GetAllInvitationCodes)
+			invitationRoute.GET("/search", controller.SearchInvitationCodes)
+			invitationRoute.POST("/", controller.AddInvitationCode)
+			invitationRoute.DELETE("/:id", controller.DeleteInvitationCode)
+		}
 		logRoute := apiRouter.Group("/log")
 		logRoute.GET("/", middleware.AdminAuth(), controller.GetAllLogs)
 		logRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteHistoryLogs)
@@ -212,6 +220,17 @@ func SetApiRouter(router *gin.Engine) {
 		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
 		logRoute.GET("/self", middleware.UserAuth(), controller.GetUserLogs)
 		logRoute.GET("/self/search", middleware.UserAuth(), controller.SearchUserLogs)
+		logRoute.GET("/ip/stat", middleware.AdminAuth(), controller.GetIpStats)
+		logRoute.GET("/ip/detail", middleware.AdminAuth(), controller.GetIpDetailLogs)
+
+		bannedIpRoute := apiRouter.Group("/banned-ip")
+		bannedIpRoute.Use(middleware.AdminAuth())
+		{
+			bannedIpRoute.GET("/", controller.GetBannedIpList)
+			bannedIpRoute.POST("/", controller.BanIp)
+			bannedIpRoute.DELETE("/:ip", controller.UnbanIp)
+			bannedIpRoute.GET("/check/:ip", controller.CheckIpBanned)
+		}
 
 		dataRoute := apiRouter.Group("/data")
 		dataRoute.GET("/", middleware.AdminAuth(), controller.GetAllQuotaDates)

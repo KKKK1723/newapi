@@ -515,10 +515,13 @@ const RechargeCard = ({
           ) : (
             <Banner
               type='info'
-              description={t(
-                '管理员未开启在线充值功能，请联系管理员开启或使用兑换码充值。',
-              )}
-              className='!rounded-xl'
+              description={
+                <span style={{ fontSize: 16 }}>
+                  {t('1元10刀，联系管理员购买额度')}
+                </span>
+              }
+              fullMode={false}
+              className='!rounded-xl w-full'
               closeIcon={null}
             />
           )}

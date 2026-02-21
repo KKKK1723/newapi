@@ -664,9 +664,9 @@ const TopUp = () => {
 
       {/* 用户信息头部 */}
       <div className='space-y-6'>
-        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
+        <div className='flex justify-center'>
           {/* 左侧充值区域 */}
-          <div className='lg:col-span-7 space-y-6 w-full'>
+          <div className='max-w-3xl w-full space-y-6'>
             <RechargeCard
               t={t}
               enableOnlineTopUp={enableOnlineTopUp}
@@ -705,8 +705,8 @@ const TopUp = () => {
             />
           </div>
 
-          {/* 右侧信息区域 */}
-          <div className='lg:col-span-5'>
+          {/* 右侧信息区域（已隐藏） */}
+          {/* <div className='lg:col-span-5'>
             <InvitationCard
               t={t}
               userState={userState}
@@ -715,7 +715,7 @@ const TopUp = () => {
               affLink={affLink}
               handleAffLinkClick={handleAffLinkClick}
             />
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

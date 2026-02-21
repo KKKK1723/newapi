@@ -78,6 +78,7 @@ const RegisterForm = () => {
     email: '',
     verification_code: '',
     wechat_verification_code: '',
+    invitation_code: '',
   });
   const { username, password, password2 } = inputs;
   const [userState, userDispatch] = useContext(UserContext);
@@ -593,6 +594,17 @@ const RegisterForm = () => {
                       prefix={<IconKey />}
                     />
                   </>
+                )}
+
+                {status?.invitation_code_enabled && (
+                  <Form.Input
+                    field='invitation_code'
+                    label={t('邀请码')}
+                    placeholder={t('请输入邀请码')}
+                    name='invitation_code'
+                    onChange={(value) => handleChange('invitation_code', value)}
+                    prefix={<IconKey />}
+                  />
                 )}
 
                 {(hasUserAgreement || hasPrivacyPolicy) && (

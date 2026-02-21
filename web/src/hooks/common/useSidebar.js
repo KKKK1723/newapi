@@ -50,7 +50,9 @@ export const DEFAULT_ADMIN_CONFIG = {
     models: true,
     deployment: true,
     redemption: true,
+    invitation: true,
     user: true,
+    'ip-stats': true,
     setting: true,
   },
 };

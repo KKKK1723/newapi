@@ -624,6 +624,16 @@ func IsAdmin(userId int) bool {
 	return user.Role >= common.RoleAdminUser
 }
 
+// GetAllUsersTotalStats returns the sum of used_quota and request_count across all users
+func GetAllUsersTotalStats() (int64, int64, error) {
+	var result struct {
+		TotalUsedQuota    int64
+		TotalRequestCount int64
+	}
+	err := DB.Model(&User{}).Select("COALESCE(SUM(used_quota), 0) as total_used_quota, COALESCE(SUM(request_count), 0) as total_request_count").Scan(&result).Error
+	return result.TotalUsedQuota, result.TotalRequestCount, err
+}
+
 //// IsUserEnabled checks user status from Redis first, falls back to DB if needed
 //func IsUserEnabled(id int, fromDB bool) (status bool, err error) {
 //	defer func() {
@@ -928,4 +938,25 @@ func RootUserExists() bool {
 		return false
 	}
 	return true
+}
+
+// GetUserRemarksByUsernames 批量获取用户备注
+func GetUserRemarksByUsernames(usernames []string) map[string]string {
+	result := make(map[string]string)
+	if len(usernames) == 0 {
+		return result
+	}
+
+	var users []User
+	err := DB.Select("username, remark").Where("username IN ?", usernames).Find(&users).Error
+	if err != nil {
+		return result
+	}
+
+	for _, user := range users {
+		if user.Remark != "" {
+			result[user.Username] = user.Remark
+		}
+	}
+	return result
 }

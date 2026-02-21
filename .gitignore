@@ -27,3 +27,8 @@ data/
 .gomodcache/
 .gocache-temp
 .gopath
+new-api-linux
+new-api-linux-correct
+web/dist-new.tar
+web/dist.tar
+web/nul

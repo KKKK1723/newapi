@@ -34,8 +34,10 @@ import PasswordResetConfirm from './components/auth/PasswordResetConfirm';
 import Channel from './pages/Channel';
 import Token from './pages/Token';
 import Redemption from './pages/Redemption';
+import Invitation from './pages/Invitation';
 import TopUp from './pages/TopUp';
 import Log from './pages/Log';
+import IpStats from './pages/IpStats';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
 import Midjourney from './pages/Midjourney';
@@ -52,6 +54,7 @@ import SetupCheck from './components/layout/SetupCheck';
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const About = lazy(() => import('./pages/About'));
+const Monitor = lazy(() => import('./pages/Monitor'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
@@ -146,6 +149,14 @@ function App() {
           element={
             <AdminRoute>
               <Redemption />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/invitation'
+          element={
+            <AdminRoute>
+              <Invitation />
             </AdminRoute>
           }
         />
@@ -264,6 +275,14 @@ function App() {
           }
         />
         <Route
+          path='/console/ip-stats'
+          element={
+            <AdminRoute>
+              <IpStats />
+            </AdminRoute>
+          }
+        />
+        <Route
           path='/console'
           element={
             <PrivateRoute>
@@ -310,6 +329,14 @@ function App() {
                 <Pricing />
               </Suspense>
             )
+          }
+        />
+        <Route
+          path='/monitor'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <Monitor />
+            </Suspense>
           }
         />
         <Route

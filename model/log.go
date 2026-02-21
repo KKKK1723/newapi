@@ -102,11 +102,13 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 	logger.LogInfo(c, fmt.Sprintf("record error log: userId=%d, channelId=%d, modelName=%s, tokenName=%s, content=%s", userId, channelId, modelName, tokenName, content))
 	username := c.GetString("username")
 	otherStr := common.MapToJsonStr(other)
-	// 判断是否需要记录 IP
-	needRecordIp := false
-	if settingMap, err := GetUserSetting(userId, false); err == nil {
-		if settingMap.RecordIpLog {
-			needRecordIp = true
+	// 判断是否需要记录 IP - 系统级开关优先
+	needRecordIp := common.AdminForceRecordIpEnabled
+	if !needRecordIp {
+		if settingMap, err := GetUserSetting(userId, false); err == nil {
+			if settingMap.RecordIpLog {
+				needRecordIp = true
+			}
 		}
 	}
 	log := &Log{
@@ -161,11 +163,13 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	logger.LogInfo(c, fmt.Sprintf("record consume log: userId=%d, params=%s", userId, common.GetJsonString(params)))
 	username := c.GetString("username")
 	otherStr := common.MapToJsonStr(params.Other)
-	// 判断是否需要记录 IP
-	needRecordIp := false
-	if settingMap, err := GetUserSetting(userId, false); err == nil {
-		if settingMap.RecordIpLog {
-			needRecordIp = true
+	// 判断是否需要记录 IP - 系统级开关优先
+	needRecordIp := common.AdminForceRecordIpEnabled
+	if !needRecordIp {
+		if settingMap, err := GetUserSetting(userId, false); err == nil {
+			if settingMap.RecordIpLog {
+				needRecordIp = true
+			}
 		}
 	}
 	log := &Log{
@@ -409,4 +413,156 @@ func DeleteOldLog(ctx context.Context, targetTimestamp int64, limit int) (int64,
 	}
 
 	return total, nil
+}
+
+// IpStat IP统计结构体
+type IpStat struct {
+	Ip           string            `json:"ip"`
+	RequestCount int64             `json:"request_count"`
+	ErrorCount   int64             `json:"error_count"`
+	TotalQuota   int64             `json:"total_quota"`
+	LastSeenAt   int64             `json:"last_seen_at"`
+	Usernames    []string          `json:"usernames"`
+	UserRemarks  map[string]string `json:"user_remarks"`
+	TokenNames   []string          `json:"token_names"`
+	Groups       []string          `json:"groups"`
+	IsBanned     bool              `json:"is_banned"`
+}
+
+// IpStatRow 数据库查询结果行
+type IpStatRow struct {
+	Ip           string `gorm:"column:ip"`
+	RequestCount int64  `gorm:"column:request_count"`
+	ErrorCount   int64  `gorm:"column:error_count"`
+	TotalQuota   int64  `gorm:"column:total_quota"`
+	LastSeenAt   int64  `gorm:"column:last_seen_at"`
+	Usernames    string `gorm:"column:usernames"`
+	TokenNames   string `gorm:"column:token_names"`
+	Groups       string `gorm:"column:groups"`
+}
+
+// GetIpStats 获取IP统计数据
+func GetIpStats(startTimestamp int64, endTimestamp int64, ip string, startIdx int, num int) (stats []IpStat, total int64, err error) {
+	tx := LOG_DB.Table("logs").Where("ip != '' AND ip IS NOT NULL")
+
+	if startTimestamp != 0 {
+		tx = tx.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp != 0 {
+		tx = tx.Where("created_at <= ?", endTimestamp)
+	}
+	if ip != "" {
+		tx = tx.Where("ip LIKE ?", "%"+ip+"%")
+	}
+
+	// 获取总数 - 统计不同IP的数量
+	err = tx.Select("COUNT(DISTINCT ip)").Scan(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 获取分页数据
+	var rows []IpStatRow
+	err = tx.Select(`
+		ip,
+		COUNT(*) as request_count,
+		SUM(CASE WHEN type = ? THEN 1 ELSE 0 END) as error_count,
+		SUM(CASE WHEN type = ? THEN quota ELSE 0 END) as total_quota,
+		MAX(created_at) as last_seen_at,
+		GROUP_CONCAT(DISTINCT username) as usernames,
+		GROUP_CONCAT(DISTINCT token_name) as token_names,
+		GROUP_CONCAT(DISTINCT ` + logGroupCol + `) as groups
+	`, LogTypeError, LogTypeConsume).
+		Group("ip").
+		Order("request_count DESC").
+		Limit(num).
+		Offset(startIdx).
+		Scan(&rows).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 转换为 IpStat 切片，并收集所有用户名
+	stats = make([]IpStat, len(rows))
+	allUsernames := make(map[string]bool)
+	for i, row := range rows {
+		usernames := splitAndClean(row.Usernames)
+		stats[i] = IpStat{
+			Ip:           row.Ip,
+			RequestCount: row.RequestCount,
+			ErrorCount:   row.ErrorCount,
+			TotalQuota:   row.TotalQuota,
+			LastSeenAt:   row.LastSeenAt,
+			Usernames:    usernames,
+			UserRemarks:  make(map[string]string),
+			TokenNames:   splitAndClean(row.TokenNames),
+			Groups:       splitAndClean(row.Groups),
+			IsBanned:     common.IsIpBanned(row.Ip),
+		}
+		for _, username := range usernames {
+			allUsernames[username] = true
+		}
+	}
+
+	// 批量查询用户备注
+	if len(allUsernames) > 0 {
+		usernameList := make([]string, 0, len(allUsernames))
+		for username := range allUsernames {
+			usernameList = append(usernameList, username)
+		}
+		userRemarks := GetUserRemarksByUsernames(usernameList)
+		// 填充备注到各个 IpStat
+		for i := range stats {
+			for _, username := range stats[i].Usernames {
+				if remark, ok := userRemarks[username]; ok && remark != "" {
+					stats[i].UserRemarks[username] = remark
+				}
+			}
+		}
+	}
+
+	return stats, total, nil
+}
+
+// splitAndClean 分割字符串并清理空值
+func splitAndClean(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	seen := make(map[string]bool)
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" && !seen[part] {
+			seen[part] = true
+			result = append(result, part)
+		}
+	}
+	return result
+}
+
+// GetIpDetailLogs 获取指定IP的日志详情
+func GetIpDetailLogs(ip string, startTimestamp int64, endTimestamp int64, startIdx int, num int) (logs []*Log, total int64, err error) {
+	tx := LOG_DB.Where("ip = ?", ip)
+
+	if startTimestamp != 0 {
+		tx = tx.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp != 0 {
+		tx = tx.Where("created_at <= ?", endTimestamp)
+	}
+
+	err = tx.Model(&Log{}).Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = tx.Order("id desc").Limit(num).Offset(startIdx).Find(&logs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
 }

@@ -74,6 +74,8 @@ import {
   CircleUser,
   Package,
   Server,
+  Globe,
+  TicketCheck,
 } from 'lucide-react';
 
 // 获取侧边栏Lucide图标组件
@@ -117,6 +119,10 @@ export function getLucideIcon(key, selected = false) {
       return <Package {...commonProps} color={iconColor} />;
     case 'deployment':
       return <Server {...commonProps} color={iconColor} />;
+    case 'ip-stats':
+      return <Globe {...commonProps} color={iconColor} />;
+    case 'invitation':
+      return <TicketCheck {...commonProps} color={iconColor} />;
     case 'setting':
       return <Settings {...commonProps} color={iconColor} />;
     default:

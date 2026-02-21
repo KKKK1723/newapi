@@ -157,6 +157,7 @@ func main() {
 		SameSite: http.SameSiteStrictMode,
 	})
 	server.Use(sessions.Sessions("session", store))
+	server.Use(middleware.IpBanCheck())
 
 	InjectUmamiAnalytics()
 	InjectGoogleAnalytics()
@@ -248,6 +249,9 @@ func InitResources() error {
 	}
 
 	model.CheckSetup()
+
+	// Initialize banned IP cache
+	common.InitBannedIpCache(model.LoadBannedIps())
 
 	// Initialize options, should after model.InitDB()
 	model.InitOptionMap()

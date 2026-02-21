@@ -50,6 +50,7 @@ var WeChatAuthEnabled = false
 var TelegramOAuthEnabled = false
 var TurnstileCheckEnabled = false
 var RegisterEnabled = true
+var InvitationCodeEnabled = false
 
 var EmailDomainRestrictionEnabled = false // 是否启用邮箱域名限制
 var EmailAliasRestrictionEnabled = false  // 是否启用邮箱别名限制
@@ -73,6 +74,7 @@ var DebugEnabled bool
 var MemoryCacheEnabled bool
 
 var LogConsumeEnabled = true
+var AdminForceRecordIpEnabled = true // 强制记录所有请求IP（默认开启且不可关闭）
 
 var TLSInsecureSkipVerify bool
 var InsecureTLSConfig = &tls.Config{InsecureSkipVerify: true}
@@ -195,6 +197,11 @@ const (
 	RedemptionCodeStatusEnabled  = 1 // don't use 0, 0 is the default value!
 	RedemptionCodeStatusDisabled = 2 // also don't use 0
 	RedemptionCodeStatusUsed     = 3 // also don't use 0
+)
+
+const (
+	InvitationCodeStatusUnused = 1
+	InvitationCodeStatusUsed   = 2
 )
 
 const (

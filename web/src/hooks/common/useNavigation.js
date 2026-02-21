@@ -26,12 +26,13 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
       home: true,
       console: true,
       pricing: true,
-      docs: true,
-      about: true,
+      docs: false, // 隐藏文档链接
+      about: false,
+      monitor: false,
     };
 
-    // 使用传入的配置或默认配置
-    const modules = headerNavModules || defaultModules;
+    // 使用传入的配置或默认配置，确保新增字段有默认值
+    const modules = { ...defaultModules, ...headerNavModules };
 
     const allLinks = [
       {
@@ -60,9 +61,9 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
           ]
         : []),
       {
-        text: t('关于'),
-        itemKey: 'about',
-        to: '/about',
+        text: t('模型可用性监测'),
+        itemKey: 'monitor',
+        to: '/monitor',
       },
     ];
 

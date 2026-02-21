@@ -167,3 +167,46 @@ func DeleteHistoryLogs(c *gin.Context) {
 	})
 	return
 }
+
+// GetIpStats 获取IP统计数据
+func GetIpStats(c *gin.Context) {
+	pageInfo := common.GetPageQuery(c)
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	ip := c.Query("ip")
+
+	stats, total, err := model.GetIpStats(startTimestamp, endTimestamp, ip, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(stats)
+	common.ApiSuccess(c, pageInfo)
+}
+
+// GetIpDetailLogs 获取指定IP的日志详情
+func GetIpDetailLogs(c *gin.Context) {
+	pageInfo := common.GetPageQuery(c)
+	ip := c.Query("ip")
+	if ip == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "ip is required",
+		})
+		return
+	}
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+
+	logs, total, err := model.GetIpDetailLogs(ip, startTimestamp, endTimestamp, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(logs)
+	common.ApiSuccess(c, pageInfo)
+}

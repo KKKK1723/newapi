@@ -29,6 +29,51 @@ body {
     sans-serif;
   color: var(--semi-color-text-0);
   background-color: var(--semi-color-bg-0);
+  position: relative;
+  min-height: 100vh;
+}
+
+/* 全局背景图 - 使用伪元素实现透明效果，不影响文字 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/bg-cat.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  opacity: 0.65; /* 调高到 65%，背景图更明显 */
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 让 Semi UI Layout 组件背景透明，以显示全局背景图 */
+.semi-layout,
+.semi-layout-content,
+.semi-layout-header,
+.semi-layout-footer {
+  background: transparent !important;
+}
+
+/* 让侧边栏、卡片等组件半透明，可以看到背景图 */
+.semi-sider,
+.semi-navigation,
+.semi-card,
+.semi-table-container {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* 暗黑模式下的半透明背景 */
+html.dark .semi-sider,
+html.dark .semi-navigation,
+html.dark .semi-card,
+html.dark .semi-table-container {
+  background: rgba(30, 30, 30, 0.6) !important;
 }
 
 code {
@@ -108,13 +153,13 @@ code {
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
-  background: var(--semi-color-bg-0);
+  background: transparent;
 }
 
 .sidebar-nav {
   flex: 1;
   width: 100%;
-  background: var(--semi-color-bg-0);
+  background: transparent;
   height: 100%;
   overflow: hidden;
   border-right: none;
@@ -192,11 +237,11 @@ code {
   padding: 12px;
   margin-top: auto;
   cursor: pointer;
-  background-color: var(--semi-color-bg-0);
+  background-color: transparent;
   position: sticky;
   bottom: 0;
   z-index: 10;
-  box-shadow: 0 -10px 10px -5px var(--semi-color-bg-0);
+  box-shadow: none;
   backdrop-filter: blur(4px);
   border-top: 1px solid rgba(var(--semi-grey-0), 0.08);
 }

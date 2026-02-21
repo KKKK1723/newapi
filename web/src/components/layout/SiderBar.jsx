@@ -35,9 +35,11 @@ const routerMap = {
   channel: '/console/channel',
   token: '/console/token',
   redemption: '/console/redemption',
+  invitation: '/console/invitation',
   topup: '/console/topup',
   user: '/console/user',
   log: '/console/log',
+  'ip-stats': '/console/ip-stats',
   midjourney: '/console/midjourney',
   setting: '/console/setting',
   about: '/about',
@@ -171,9 +173,21 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {
+        text: t('邀请码管理'),
+        itemKey: 'invitation',
+        to: '/invitation',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
         text: t('用户管理'),
         itemKey: 'user',
         to: '/user',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('IP统计'),
+        itemKey: 'ip-stats',
+        to: '/ip-stats',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {
@@ -432,15 +446,15 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             setOpenedKeys(data.openKeys);
           }}
         >
-          {/* 聊天区域 */}
-          {hasSectionVisibleModules('chat') && (
+          {/* 聊天区域 - 已隐藏 */}
+          {/* {hasSectionVisibleModules('chat') && (
             <div className='sidebar-section'>
               {!collapsed && (
                 <div className='sidebar-group-label'>{t('聊天')}</div>
               )}
               {chatMenuItems.map((item) => renderSubItem(item))}
             </div>
-          )}
+          )} */}
 
           {/* 控制台区域 */}
           {hasSectionVisibleModules('console') && (

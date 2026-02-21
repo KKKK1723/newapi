@@ -156,8 +156,11 @@ func Register(c *gin.Context) {
 		})
 		return
 	}
-	var user model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&user)
+	var registerReq struct {
+		model.User
+		InvitationCode string `json:"invitation_code"`
+	}
+	err := json.NewDecoder(c.Request.Body).Decode(&registerReq)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -165,6 +168,7 @@ func Register(c *gin.Context) {
 		})
 		return
 	}
+	user := registerReq.User
 	if err := common.Validate.Struct(&user); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -204,6 +208,22 @@ func Register(c *gin.Context) {
 		})
 		return
 	}
+	if common.InvitationCodeEnabled {
+		if registerReq.InvitationCode == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "请输入邀请码",
+			})
+			return
+		}
+		if err := model.ValidateInvitationCode(registerReq.InvitationCode); err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
@@ -229,6 +249,11 @@ func Register(c *gin.Context) {
 			"message": "用户注册失败或用户ID获取失败",
 		})
 		return
+	}
+	if common.InvitationCodeEnabled && registerReq.InvitationCode != "" {
+		if err := model.UseInvitationCode(registerReq.InvitationCode, insertedUser.Id); err != nil {
+			common.SysLog("failed to use invitation code: " + err.Error())
+		}
 	}
 	// 生成默认令牌
 	if constant.GenerateDefaultToken {
@@ -470,6 +495,15 @@ func GetSelf(c *gin.Context) {
 		"stripe_customer":   user.StripeCustomer,
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
 		"permissions":       permissions,                // 新增权限字段
+	}
+
+	// Root用户：历史消耗和请求次数显示全体用户合计
+	if userRole == common.RoleRootUser {
+		totalUsedQuota, totalRequestCount, err := model.GetAllUsersTotalStats()
+		if err == nil {
+			responseData["used_quota"] = totalUsedQuota
+			responseData["request_count"] = totalRequestCount
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
