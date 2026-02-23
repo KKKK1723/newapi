@@ -517,7 +517,7 @@ const RechargeCard = ({
               type='info'
               description={
                 <span style={{ fontSize: 16 }}>
-                  {t('1元10刀，联系管理员购买额度')}
+                  {t('1元20刀，联系管理员购买额度')}
                 </span>
               }
               fullMode={false}

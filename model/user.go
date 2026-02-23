@@ -634,6 +634,18 @@ func GetAllUsersTotalStats() (int64, int64, error) {
 	return result.TotalUsedQuota, result.TotalRequestCount, err
 }
 
+// GetNonRootUsersQuotaStats returns the total remaining quota for all non-root users
+func GetNonRootUsersQuotaStats() (int64, error) {
+	var result struct {
+		TotalRemainQuota int64
+	}
+	err := DB.Model(&User{}).
+		Where("role < ?", common.RoleRootUser).
+		Select("COALESCE(SUM(quota), 0) as total_remain_quota").
+		Scan(&result).Error
+	return result.TotalRemainQuota, err
+}
+
 //// IsUserEnabled checks user status from Redis first, falls back to DB if needed
 //func IsUserEnabled(id int, fromDB bool) (status bool, err error) {
 //	defer func() {

@@ -297,6 +297,17 @@ func Register(c *gin.Context) {
 	return
 }
 
+func GetUserQuotaStats(c *gin.Context) {
+	totalRemainQuota, err := model.GetNonRootUsersQuotaStats()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{
+		"total_remain_quota": totalRemainQuota,
+	})
+}
+
 func GetAllUsers(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 	users, total, err := model.GetAllUsers(pageInfo)

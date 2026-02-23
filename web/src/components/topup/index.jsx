@@ -35,6 +35,7 @@ import { StatusContext } from '../../context/Status';
 
 import RechargeCard from './RechargeCard';
 import InvitationCard from './InvitationCard';
+import RefundCard from './RefundCard';
 import TransferModal from './modals/TransferModal';
 import PaymentConfirmModal from './modals/PaymentConfirmModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
@@ -665,9 +666,10 @@ const TopUp = () => {
       {/* 用户信息头部 */}
       <div className='space-y-6'>
         <div className='flex justify-center'>
-          {/* 左侧充值区域 */}
-          <div className='max-w-3xl w-full space-y-6'>
-            <RechargeCard
+          <div className='w-full grid grid-cols-1 lg:grid-cols-12 gap-6'>
+            {/* 左侧充值区域 */}
+            <div className='lg:col-span-7 space-y-6'>
+              <RechargeCard
               t={t}
               enableOnlineTopUp={enableOnlineTopUp}
               enableStripeTopUp={enableStripeTopUp}
@@ -703,9 +705,17 @@ const TopUp = () => {
               topupInfo={topupInfo}
               onOpenHistory={handleOpenHistory}
             />
+            </div>
+
+            {/* 右侧退款说明 */}
+            <div className='lg:col-span-5'>
+              <div className='lg:sticky lg:top-[76px]'>
+                <RefundCard t={t} />
+              </div>
+            </div>
           </div>
 
-          {/* 右侧信息区域（已隐藏） */}
+          {/* 邀请区域（已隐藏） */}
           {/* <div className='lg:col-span-5'>
             <InvitationCard
               t={t}

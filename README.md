@@ -23,6 +23,7 @@
 - 邀请码系统（`model/invitation.go`、`controller/invitation.go`）
 - 注册邀请码校验
 - 日志统计 API 增强（IP 维度统计）
+- 用户额度统计 API（`GET /api/user/quota_stats`，排除 root 用户的剩余总额度）
 
 ### 前端
 
@@ -30,7 +31,9 @@
 - IP 访问统计页面（`web/src/pages/IpStats/`）
 - 邀请码管理页面（`web/src/pages/Invitation/`）
 - 模型可用性监测页面（`web/src/pages/Monitor/`，已隐藏入口）
-- 钱包页面 UI 调整（充值提示文案、布局居中）
+- 用户管理页面顶部显示所有非 root 用户剩余总额度
+- 钱包页面新增退款说明卡片（右侧栏），含退款理由说明与管理员联系方式
+- 钱包页面 UI 调整（充值提示文案、布局双栏）
 - 导航栏 / 侧边栏菜单项调整
 
 ## 本地开发

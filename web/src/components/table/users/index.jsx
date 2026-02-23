@@ -17,7 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Typography } from '@douyinfe/semi-ui';
+import { IconCoinMoneyStroked } from '@douyinfe/semi-icons';
 import CardPro from '../../common/ui/CardPro';
 import UsersTable from './UsersTable';
 import UsersActions from './UsersActions';
@@ -28,10 +30,31 @@ import EditUserModal from './modals/EditUserModal';
 import { useUsersData } from '../../../hooks/users/useUsersData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { createCardProPagination } from '../../../helpers/utils';
+import { API, showError } from '../../../helpers';
+import { renderQuota } from '../../../helpers/render';
+
+const { Text } = Typography;
 
 const UsersPage = () => {
   const usersData = useUsersData();
   const isMobile = useIsMobile();
+  const [totalRemainQuota, setTotalRemainQuota] = useState(null);
+
+  const fetchQuotaStats = useCallback(async () => {
+    try {
+      const res = await API.get('/api/user/quota_stats');
+      const { success, data } = res.data;
+      if (success) {
+        setTotalRemainQuota(data.total_remain_quota);
+      }
+    } catch (e) {
+      showError(e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQuotaStats();
+  }, [fetchQuotaStats]);
 
   const {
     // Modal state
@@ -41,7 +64,7 @@ const UsersPage = () => {
     setShowAddUser,
     closeAddUser,
     closeEditUser,
-    refresh,
+    refresh: originalRefresh,
 
     // Form state
     formInitValues,
@@ -62,6 +85,11 @@ const UsersPage = () => {
     t,
   } = usersData;
 
+  const refresh = useCallback(async () => {
+    await originalRefresh();
+    fetchQuotaStats();
+  }, [originalRefresh, fetchQuotaStats]);
+
   return (
     <>
       <AddUserModal
@@ -80,11 +108,30 @@ const UsersPage = () => {
       <CardPro
         type='type1'
         descriptionArea={
-          <UsersDescription
-            compactMode={compactMode}
-            setCompactMode={setCompactMode}
-            t={t}
-          />
+          <div className='flex flex-col gap-3 w-full'>
+            <UsersDescription
+              compactMode={compactMode}
+              setCompactMode={setCompactMode}
+              t={t}
+            />
+            {totalRemainQuota !== null && (
+              <div
+                className='flex items-center gap-2 px-3 py-2 rounded-lg'
+                style={{
+                  background: 'var(--semi-color-fill-0)',
+                }}
+              >
+                <IconCoinMoneyStroked size='large' style={{ color: 'var(--semi-color-warning)' }} />
+                <Text strong style={{ fontSize: 16 }}>
+                  {t('用户剩余总额度')}
+                  {t('（不含 root）')}：
+                </Text>
+                <Text strong style={{ fontSize: 18, color: 'var(--semi-color-warning)' }}>
+                  {renderQuota(totalRemainQuota)}
+                </Text>
+              </div>
+            )}
+          </div>
         }
         actionsArea={
           <div className='flex flex-col md:flex-row justify-between items-center gap-2 w-full'>
