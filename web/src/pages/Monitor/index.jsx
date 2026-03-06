@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Typography, Tag, Collapsible, Tooltip } from '@douyinfe/semi-ui';
+import { Typography, Tag, Collapsible, Tooltip, Spin } from '@douyinfe/semi-ui';
 import {
   Activity,
   Zap,
@@ -10,59 +10,9 @@ import {
   ChevronDown,
   RefreshCw,
 } from 'lucide-react';
+import { API, showError } from '../../helpers';
 
 const { Title, Text } = Typography;
-
-// ─── Mock 数据 ────────────────────────────────────────────────
-function generateHistory(baseLatency, basePing, successRate, count = 60) {
-  const now = Date.now();
-  const interval = 5 * 60 * 1000; // 每 5 分钟一个点
-  return Array.from({ length: count }, (_, i) => {
-    const ok = Math.random() < successRate;
-    return {
-      status: ok ? 'ok' : 'fail',
-      time: new Date(now - (count - 1 - i) * interval),
-      latency: ok ? baseLatency + Math.floor(Math.random() * 600 - 300) : 0,
-      ping: ok ? basePing + Math.floor(Math.random() * 80 - 40) : 0,
-    };
-  });
-}
-
-const MOCK_MODELS = [
-  {
-    id: 'claude-sonnet-4-6',
-    name: 'Claude Sonnet 4.6',
-    provider: 'Anthropic',
-    modelId: 'claude-sonnet-4-6',
-    status: 'operational',
-    latency: 2371,
-    ping: 293,
-    availability: { success: 179, total: 185, rate: 0.9676 },
-    history: generateHistory(2371, 293, 0.92),
-  },
-  {
-    id: 'claude-opus-4-6',
-    name: 'Claude Opus 4.6',
-    provider: 'Anthropic',
-    modelId: 'claude-opus-4-6',
-    status: 'operational',
-    latency: 4010,
-    ping: 285,
-    availability: { success: 2776, total: 3200, rate: 0.8675 },
-    history: generateHistory(4010, 285, 0.87),
-  },
-  {
-    id: 'claude-haiku-4-5',
-    name: 'Claude Haiku 4.5',
-    provider: 'Anthropic',
-    modelId: 'claude-haiku-4-5-20251001',
-    status: 'operational',
-    latency: 2093,
-    ping: 283,
-    availability: { success: 2839, total: 3203, rate: 0.8864 },
-    history: generateHistory(2093, 283, 0.89),
-  },
-];
 
 const PERIOD_OPTIONS = [
   { value: '7d', label: '7 天' },
@@ -100,8 +50,22 @@ function getRateColor(rate) {
 }
 
 // ─── 历史条形图 ───────────────────────────────────────────────
+// 单条探测记录的状态颜色：绿色=流畅 / 橙色=延迟高但可用 / 红色=失败
+function getPointColor(point) {
+  if (point.status !== 'ok') return '#ef4444'; // 红
+  if (point.latency > 5000) return '#f59e0b';  // 橙
+  return '#16a34a';                              // 绿
+}
+
+function getPointLabel(point) {
+  if (point.status !== 'ok') return '异常';
+  if (point.latency > 5000) return '缓慢';
+  return '正常';
+}
+
 function HistoryBarTooltip({ point }) {
-  const isOk = point.status === 'ok';
+  const color = getPointColor(point);
+  const label = getPointLabel(point);
   const timeStr = point.time.toLocaleString('zh-CN', {
     month: '2-digit',
     day: '2-digit',
@@ -117,14 +81,14 @@ function HistoryBarTooltip({ point }) {
             width: 7,
             height: 7,
             borderRadius: '50%',
-            background: isOk ? '#16a34a' : '#ef4444',
+            background: color,
           }}
         />
-        <span style={{ fontWeight: 600, color: '#111' }}>{isOk ? '正常' : '异常'}</span>
+        <span style={{ fontWeight: 600, color: '#111' }}>{label}</span>
       </div>
       <div style={{ color: '#666' }}>
         <div>时间：{timeStr}</div>
-        {isOk ? (
+        {point.status === 'ok' ? (
           <>
             <div>延迟：{point.latency} ms</div>
             <div>Ping：{point.ping} ms</div>
@@ -154,7 +118,7 @@ function HistoryBar({ history }) {
   return (
     <div className='flex items-end gap-[2px] w-full' style={{ height: 36, paddingTop: 4 }}>
       {history.map((point, i) => {
-        const isOk = point.status === 'ok';
+        const color = getPointColor(point);
         const isHovered = hoveredIdx === i;
         return (
           <Tooltip
@@ -171,8 +135,8 @@ function HistoryBar({ history }) {
                 minWidth: 2,
                 height: 28,
                 borderRadius: 2,
-                backgroundColor: isOk ? '#16a34a' : '#ef4444',
-                opacity: isHovered ? 1 : isOk ? 0.85 : 0.9,
+                backgroundColor: color,
+                opacity: isHovered ? 1 : 0.85,
                 transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
                 transition: 'opacity 0.15s, transform 0.15s ease-out',
                 cursor: 'pointer',
@@ -340,12 +304,22 @@ function ModelCard({ model, period }) {
         <Collapsible isOpen={expanded}>
           <div className='py-3'>
             <div className='flex items-center gap-1.5'>
-              <CheckCircle size={13} color='#22c55e' />
+              {model.status === 'failed' ? (
+                <XCircle size={13} color='#ef4444' />
+              ) : model.status === 'degraded' ? (
+                <Clock size={13} color='#f59e0b' />
+              ) : (
+                <CheckCircle size={13} color='#22c55e' />
+              )}
               <span
                 className='text-xs'
                 style={{ color: 'var(--semi-color-text-2)' }}
               >
-                API 服务正常运行中
+                {model.status === 'failed'
+                  ? 'API 服务异常'
+                  : model.status === 'degraded'
+                    ? 'API 服务响应缓慢'
+                    : 'API 服务正常运行中'}
               </span>
             </div>
           </div>
@@ -388,7 +362,7 @@ function ModelCard({ model, period }) {
             className='text-[10px] font-semibold tracking-wider uppercase'
             style={{ color: 'var(--semi-color-text-3)' }}
           >
-            History (60pts)
+            History ({model.history.length}pts)
           </span>
           <div
             className='flex items-center gap-1 text-[10px]'
@@ -398,7 +372,16 @@ function ModelCard({ model, period }) {
             Next update in 0s
           </div>
         </div>
-        <HistoryBar history={model.history} />
+        {model.history.length > 0 ? (
+          <HistoryBar history={model.history} />
+        ) : (
+          <div
+            className='flex items-center justify-center'
+            style={{ height: 28, color: 'var(--semi-color-text-3)', fontSize: 12 }}
+          >
+            暂无历史数据
+          </div>
+        )}
         <div className='flex items-center justify-between mt-1.5'>
           <span
             className='text-[10px] uppercase'
@@ -420,27 +403,48 @@ function ModelCard({ model, period }) {
 
 // ─── 主页面 ───────────────────────────────────────────────────
 export default function Monitor() {
-  const [models, setModels] = useState(MOCK_MODELS);
+  const [models, setModels] = useState([]);
   const [period, setPeriod] = useState('7d');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // mock 刷新
+  const fetchMonitorData = useCallback(async (currentPeriod) => {
+    try {
+      console.log('[Monitor] fetching /api/monitor/status?period=' + (currentPeriod || period));
+      const res = await API.get('/api/monitor/status', { params: { period: currentPeriod || period } });
+      console.log('[Monitor] response:', res.status, res.data);
+      const { success, data, message } = res.data;
+      if (success && Array.isArray(data)) {
+        const processed = data.map((m) => ({
+          ...m,
+          history: (m.history || []).map((h) => ({
+            ...h,
+            time: new Date(h.time),
+          })),
+        }));
+        setModels(processed);
+        setLastUpdated(new Date());
+      } else {
+        console.error('[Monitor] API returned failure:', message);
+        showError(message || '获取监控数据失败');
+      }
+    } catch (err) {
+      console.error('[Monitor] fetch error:', err);
+      showError('获取监控数据失败');
+    }
+  }, [period]);
+
+  // 初始加载 + period 切换时重新获取
+  useEffect(() => {
+    setLoading(true);
+    fetchMonitorData(period).finally(() => setLoading(false));
+  }, [period]);
+
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => {
-      setModels(
-        MOCK_MODELS.map((m) => ({
-          ...m,
-          latency: m.latency + Math.floor(Math.random() * 200 - 100),
-          ping: m.ping + Math.floor(Math.random() * 40 - 20),
-          history: generateHistory(m.latency, m.ping, m.availability.rate),
-        })),
-      );
-      setLastUpdated(new Date());
-      setRefreshing(false);
-    }, 600);
-  }, []);
+    fetchMonitorData(period).finally(() => setRefreshing(false));
+  }, [fetchMonitorData, period]);
 
   // 汇总统计
   const summary = useMemo(() => {
@@ -609,11 +613,27 @@ export default function Monitor() {
         </div>
 
         {/* ── 卡片网格 ─────────────────────────────── */}
-        <div className='grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3'>
-          {models.map((m) => (
-            <ModelCard key={m.id} model={m} period={period} />
-          ))}
-        </div>
+        {loading ? (
+          <div className='flex items-center justify-center' style={{ minHeight: 300 }}>
+            <Spin size='large' />
+          </div>
+        ) : models.length === 0 ? (
+          <div
+            className='flex flex-col items-center justify-center'
+            style={{ minHeight: 300, color: 'var(--semi-color-text-3)' }}
+          >
+            <Activity size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
+            <Text style={{ color: 'var(--semi-color-text-3)', fontSize: 14 }}>
+              暂无监控数据，请等待探测完成
+            </Text>
+          </div>
+        ) : (
+          <div className='grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3'>
+            {models.map((m) => (
+              <ModelCard key={m.id} model={m} period={period} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

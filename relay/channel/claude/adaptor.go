@@ -82,6 +82,10 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Header, info *rel
 		anthropicVersion = "2023-06-01"
 	}
 	req.Set("anthropic-version", anthropicVersion)
+	// 透传 User-Agent 到上游
+	if ua := c.Request.Header.Get("User-Agent"); ua != "" {
+		req.Set("User-Agent", ua)
+	}
 	CommonClaudeHeadersOperation(c, req, info)
 	return nil
 }

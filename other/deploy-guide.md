@@ -117,6 +117,75 @@ sleep 2 && ps aux | grep new-api | grep -v grep
 - 如果代码中数据库有新增字段/表，GORM 的 AutoMigrate 会自动处理，不会丢数据
 - 服务监听端口 `3000`，Caddy 反代到 80/443
 
+### 5. Claude Code 远程部署坑点（Windows SSH）
+
+本地环境是 Windows + Git Bash，通过 Claude Code 执行 SSH 命令时有以下问题：
+
+#### 坑 1：SSH 命令 stdout 丢失
+
+普通 `ssh root@IP "command"` 执行后，命令实际成功但 stdout 不会被 Claude Code 捕获（exit code 显示为 255 或 1），原因是 SSH 密码认证的 stderr 输出干扰了返回值。
+
+**解决方案**：将 stdout 重定向到本地文件，再读取文件内容：
+
+```bash
+ssh root@154.219.114.21 "command" > "C:/Users/20524/ssh_result.txt" 2>/dev/null
+cat "C:/Users/20524/ssh_result.txt"
+```
+
+#### 坑 2：`$()` 变量替换被本地 Shell 展开
+
+双引号包裹的远程命令中，`$(pgrep -f './new-api')` 会在本地 Shell 先展开（结果为空），导致 `kill` 命令没有参数。
+
+**解决方案**：用单引号包裹远程命令，或用 heredoc：
+
+```bash
+# 单引号（简单命令）
+ssh root@IP 'kill $(pgrep -f new-api)'
+
+# heredoc（复杂脚本，推荐）
+ssh root@IP 'bash -s' > result.txt 2>/dev/null << 'SCRIPT'
+cd /opt/new-api
+pkill -f "./new-api" || true
+sleep 2
+cp new-api new-api.bak
+mv new-api-new new-api
+chmod +x new-api
+nohup ./new-api > app.log 2>&1 &
+sleep 3
+pgrep -f "./new-api" && echo "OK" || echo "FAIL"
+tail -5 app.log
+SCRIPT
+```
+
+#### 坑 3：scp 正常但 ssh 报错
+
+`scp` 上传文件可以成功，但 `ssh` 执行命令却报 exit code 255。这是因为 scp 不需要 tty，而 ssh 密码认证在非交互环境下会尝试打开 `/dev/tty` 失败。实际上命令已经执行成功，只是返回码不可靠。
+
+**判断方法**：看重定向到文件的输出内容，不要依赖 exit code。
+
+#### 推荐的一键部署命令
+
+```bash
+# 1. 上传
+scp ./new-api root@154.219.114.21:/opt/new-api/new-api-new
+
+# 2. 远程替换并重启（用 heredoc + 输出到文件）
+ssh root@154.219.114.21 'bash -s' > "C:/Users/20524/deploy_out.txt" 2>/dev/null << 'SCRIPT'
+cd /opt/new-api
+pkill -f "./new-api" 2>/dev/null || true
+sleep 2
+pgrep -f "new-api" && echo "WARNING: old process still running" || echo "OK: process stopped"
+cp new-api new-api.bak
+mv new-api-new new-api
+chmod +x new-api
+nohup ./new-api > app.log 2>&1 &
+sleep 3
+pgrep -f "./new-api" && echo "OK: new process started" || echo "FAIL: process not started"
+tail -5 app.log
+SCRIPT
+cat "C:/Users/20524/deploy_out.txt"
+```
+
 ## 服务器上其他服务
 
 | 端口 | 服务 |

@@ -316,5 +316,10 @@ func SetApiRouter(router *gin.Engine) {
 			deploymentsRoute.POST("/:id/extend", controller.ExtendDeployment)
 			deploymentsRoute.DELETE("/:id", controller.DeleteDeployment)
 		}
+
+		monitorRoute := apiRouter.Group("/monitor")
+		{
+			monitorRoute.GET("/status", controller.GetMonitorStatus)
+		}
 	}
 }

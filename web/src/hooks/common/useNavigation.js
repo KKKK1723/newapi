@@ -28,7 +28,7 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
       pricing: true,
       docs: false, // 隐藏文档链接
       about: false,
-      monitor: false,
+      monitor: true,
     };
 
     // 使用传入的配置或默认配置，确保新增字段有默认值
@@ -63,7 +63,9 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
       {
         text: t('模型可用性监测'),
         itemKey: 'monitor',
-        to: '/monitor',
+        to: 'https://check.taokc.xyz/',
+        isExternal: true,
+        externalLink: 'https://check.taokc.xyz/',
       },
     ];
 
